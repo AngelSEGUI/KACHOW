@@ -6,9 +6,7 @@
     <title>Robot Teleop</title>
     <!-- Socket.IO CDN -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <!-- potentiellement le modifer en lien Flask:
-     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    -->
+    <!-- Flask Dynamic CSS Link -->
     <link rel="stylesheet" href="../static/css/style.css">
 </head>
 <body>
@@ -21,6 +19,12 @@
         </div>
     </div>
 
+    <!-- Live Camera Stream -->
+    <div class="video-container">
+        <img src="{{ url_for('video_feed') }}" alt="Live Camera Stream" id="camera-feed">
+    </div>
+
+    <!-- Controller Card -->
     <div class="controller-card">
         <div class="dpad">
             <div class="empty"></div>
@@ -32,7 +36,9 @@
             <button class="btn" id="btn-left" aria-label="Left">
                 <svg viewBox="0 0 24 24"><path d="M4 12l8-8v6h8v4h-8v6z"/></svg>
             </button>
-            <div class="empty"></div>
+            <button class="btn" id="btn-stop" aria-label="Stop">
+                <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+            </button>
             <button class="btn" id="btn-right" aria-label="Right">
                 <svg viewBox="0 0 24 24"><path d="M20 12l-8-8v6H4v4h8v6z"/></svg>
             </button>
@@ -49,3 +55,4 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
+

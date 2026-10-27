@@ -111,6 +111,63 @@ body {
     transition: transform 0.15s ease;
 }
 
+/* Live Camera Container - Cyberpunk / Glassmorphism Style */
+.video-container {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto 1.5rem auto;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 28px;
+    padding: 8px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-container:hover {
+    border-color: rgba(0, 242, 254, 0.3);
+    box-shadow: 0 0 30px var(--primary-glow);
+}
+
+#camera-feed {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 20px;
+    background-color: #05070a;
+    object-fit: cover;
+    aspect-ratio: 4 / 3;
+}
+
+/* Live Camera HUD Badge Overlay */
+.video-container::before {
+    content: "● LIVE REC";
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(11, 14, 20, 0.75);
+    border: 1px solid var(--card-border);
+    color: var(--accent-red);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    z-index: 2;
+    pointer-events: none;
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
 /* Active State Styles */
 .btn:active, .btn.active {
     background: var(--primary);
