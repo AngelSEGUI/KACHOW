@@ -31,6 +31,7 @@ rpi-gui/
 │       └── main.js         # Touch event handling and WebSocket client
 └── templates/
     └── index.html          # HTML structure
+```
 
 ## Quick Start Guide
 
