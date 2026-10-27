@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Robot Teleop</title>
+    <!-- Socket.IO CDN -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <div class="header">
+        <h1 class="title">Robot Teleop</h1>
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            SYSTEM ONLINE
+        </div>
+    </div>
+
+    <div class="controller-card">
+        <div class="dpad">
+            <div class="empty"></div>
+            <button class="btn" id="btn-forward" aria-label="Forward">
+                <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z"/></svg>
+            </button>
+            <div class="empty"></div>
+
+            <button class="btn" id="btn-left" aria-label="Left">
+                <svg viewBox="0 0 24 24"><path d="M4 12l8-8v6h8v4h-8v6z"/></svg>
+            </button>
+            <div class="empty"></div>
+            <button class="btn" id="btn-right" aria-label="Right">
+                <svg viewBox="0 0 24 24"><path d="M20 12l-8-8v6H4v4h8v6z"/></svg>
+            </button>
+
+            <div class="empty"></div>
+            <button class="btn" id="btn-backward" aria-label="Backward">
+                <svg viewBox="0 0 24 24"><path d="M12 20l8-8h-6V4h-4v8H6z"/></svg>
+            </button>
+            <div class="empty"></div>
+        </div>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
