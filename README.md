@@ -3,7 +3,7 @@
 Real-time web application interface for mobile robot teleoperation, hosted on a Raspberry Pi and communicating with an onboard microcontroller (ESP32 or Arduino) via USB serial.
 
 ## Project Architecture
-
+```text
 Client Device (Phone/PC Browser)
   | WebSockets (Wi-Fi)
   v
@@ -14,7 +14,7 @@ ESP32 / Arduino Microcontroller
   | GPIO / PWM Pins
   v
 Motor Driver & Wheels
-
+```
 ## Repository Structure
 ```text
 rpi-gui/
