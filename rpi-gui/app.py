@@ -1,3 +1,4 @@
+import os
 import time
 import serial
 import glob
@@ -5,10 +6,24 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
-# Explicitly use 'threading' mode to avoid Eventlet network delays
+# Use threading mode to prevent Eventlet execution delays
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-# --- Auto-detect ESP32 Serial Port ---
+def reset_usb_bus():
+    """Unbinds and re-binds Raspberry Pi USB drivers to force a physical USB re-enumeration."""
+    print("[INFO] Resetting USB bus to revive ESP32 connection...")
+    try:
+        # Force USB host controller unbind/rebind cycle
+        os.system('echo "1-1" | sudo tee /sys/bus/usb/drivers/usb/unbind > /dev/null 2>&1')
+        time.sleep(0.5)
+        os.system('echo "1-1" | sudo tee /sys/bus/usb/drivers/usb/bind > /dev/null 2>&1')
+        time.sleep(1.5)
+    except Exception as e:
+        print(f"[WARNING] Could not cycle USB bus: {e}")
+
+# Run USB power cycle before opening the serial port
+reset_usb_bus()
+
 def find_esp32_port():
     ports = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*')
     return ports[0] if ports else None
@@ -18,10 +33,17 @@ ser = None
 
 if esp32_port:
     try:
-        # write_timeout=0 ensures non-blocking serial transmission
-        ser = serial.Serial(esp32_port, 115200, timeout=1, write_timeout=0)
+        # Standard PySerial initialization without write_timeout deadlocks
+        ser = serial.Serial(
+            port=esp32_port,
+            baudrate=115200,
+            timeout=0.1,
+            dsrdtr=False,
+            rtscts=False,
+            xonxoff=False
+        )
         
-        print(f"[INFO] Opening serial port on {esp32_port}. Waiting 2s for ESP32 boot...")
+        print("[INFO] Waiting 2 seconds for ESP32 boot sequence...")
         time.sleep(2)
         
         ser.reset_input_buffer()
@@ -33,11 +55,13 @@ else:
     print("[WARNING] No ESP32 detected on USB ports. Running in dry-run mode.")
 
 def send_command(cmd_char):
+    global ser
     if ser and ser.is_open:
         try:
             ser.write(cmd_char.encode('utf-8'))
-            ser.flush()  # Force immediate transmission over USB
             print(f"Sent to ESP32: {cmd_char}")
+        except serial.SerialTimeoutException:
+            print("[WARNING] Serial write timed out!")
         except Exception as e:
             print(f"[ERROR] Failed to send command: {e}")
     else:
