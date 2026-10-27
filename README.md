@@ -40,21 +40,36 @@ Flash either `arduino_firmware.ino` or `esp32_firmware.ino` onto your microcontr
 
 ### 2. Copy Repository to Raspberry Pi
 Transfer the repository folder from your host computer to the Raspberry Pi:
-
+```text
 scp -r rpi-gui pi@<RASPBERRY_PI_IP>:~/
-
+```
 ### 3. Install Python Dependencies
 Connect to the Raspberry Pi via SSH and install the required dependencies:
 
+```text
 ssh pi@<RASPBERRY_PI_IP>
 cd ~/rpi-gui
 pip install flask flask-socketio eventlet pyserial
+```
+
+if you get an error installing the packages, try creating a venve and use it to install them and run the script : 
+
+```text
+sudo apt update
+sudo apt install -y python3-venv python3-full
+cd ~/rpi-gui
+python3 -m venv venv
+source venv/bin/activate
+pip install flask flask-socketio eventlet pyserial
+```
 
 ### 4. Run the Application
 1. Connect the flashed microcontroller to a USB port on the Raspberry Pi.
 2. Launch the Python web server:
 
+```text
 python3 app.py
+```
 
 3. Open a browser on any device connected to the same Wi-Fi network and navigate to:
 
