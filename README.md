@@ -16,7 +16,7 @@ ESP32 / Arduino Microcontroller
 Motor Driver & Wheels
 
 ## Repository Structure
-
+```text
 rpi-gui/
 ├── README.md               # Project documentation
 ├── app.py                  # Python server script (Flask, SocketIO, PySerial)
@@ -58,16 +58,6 @@ python3 app.py
 3. Open a browser on any device connected to the same Wi-Fi network and navigate to:
 
 http://<RASPBERRY_PI_IP>:5000
-
-## Serial Protocol Mapping
-
-Commands are transmitted over USB serial at 115200 baud as single characters:
-
-- Forward Button Pressed: 'F'
-- Backward Button Pressed: 'B'
-- Left Button Pressed: 'L'
-- Right Button Pressed: 'R'
-- Button Released / Stop: 'S'
 
 ## Technical Stack
 
