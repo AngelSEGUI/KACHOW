@@ -6,6 +6,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById(elementId);
         if (!btn) return;
 
+        const socket = io();
+
+        socket.on('cpu_temp', (data) => {
+            const tempElement = document.getElementById('cpu-temp');
+            const badgeElement = document.querySelector('.temp-badge');
+            
+            if (tempElement && badgeElement) {
+                const temp = data.temp;
+                tempElement.textContent = `${temp}°C`;
+
+                // Dynamic thermal color states
+                badgeElement.classList.remove('temp-warning', 'temp-critical');
+                if (temp >= 80) {
+                    badgeElement.classList.add('temp-critical'); // Red warning
+                } else if (temp >= 70) {
+                    badgeElement.classList.add('temp-warning');  // Orange caution
+                }
+            }
+        });
+
         const startMove = (e) => {
             e.preventDefault();
             

@@ -50,6 +50,31 @@ body {
     margin: 0 0 0.5rem 0;
 }
 
+.status-group {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.temp-badge {
+    color: var(--primary);
+    border-color: var(--primary-glow);
+}
+
+/* Caution state (70°C+) */
+.temp-badge.temp-warning {
+    color: #ffb86c;
+    border-color: rgba(255, 184, 108, 0.4);
+}
+
+/* Critical state (80°C+) */
+.temp-badge.temp-critical {
+    color: #ff5555;
+    border-color: rgba(255, 85, 85, 0.6);
+    box-shadow: 0 0 12px rgba(255, 85, 85, 0.4);
+    animation: pulse-red 1s infinite;
+}
+
 .status-badge {
     display: inline-flex;
     align-items: center;

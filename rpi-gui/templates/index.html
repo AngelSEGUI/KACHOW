@@ -12,12 +12,18 @@
 <body>
 
     <div class="header">
-        <h1 class="title">Robot Teleop</h1>
+    <h1 class="title">Robot Teleop</h1>
+    <div class="status-group">
         <div class="status-badge">
             <span class="status-dot"></span>
             SYSTEM ONLINE
         </div>
+        <div class="status-badge temp-badge">
+            <span>CPU: </span>
+            <span id="cpu-temp">--.-°C</span>
+        </div>
     </div>
+
 
     <!-- Live Camera Stream -->
     <div class="video-container">
