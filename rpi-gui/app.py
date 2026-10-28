@@ -2,7 +2,8 @@ import os
 import time
 import serial
 import glob
-import io
+import cv2
+import numpy as np
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
 
@@ -14,10 +15,39 @@ except ImportError:
     camera_available = False
     print("[WARNING] Picamera2 not found. Video streaming disabled.")
 
+# Import YOLO from Ultralytics
+try:
+    from ultralytics import YOLO
+    yolo_model = YOLO('yolov8n.pt')
+    yolo_available = True
+    print("[INFO] YOLOv8 model loaded successfully.")
+except Exception as e:
+    yolo_available = False
+    print(f"[WARNING] Could not load YOLO model: {e}")
+
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-# --- Reset USB Bus for ESP32-P4 ---
+# --- Helper: Get Raspberry Pi CPU Temperature ---
+def get_cpu_temp():
+    try:
+        with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
+            temp_raw = float(f.read().strip())
+            return round(temp_raw / 1000.0, 1)
+    except Exception:
+        return 0.0
+
+def temp_broadcaster():
+    """Background task sending CPU temperature every 2 seconds."""
+    while True:
+        temp = get_cpu_temp()
+        socketio.emit('cpu_temp', {'temp': temp})
+        time.sleep(2)
+
+# Start background thread for CPU temperature telemetry
+socketio.start_background_task(temp_broadcaster)
+
+# --- USB Bus Reset for ESP32-P4 Native USB ---
 def reset_usb_bus():
     print("[INFO] Resetting USB bus to revive ESP32 connection...")
     try:
@@ -63,39 +93,59 @@ picam2 = None
 if camera_available:
     try:
         picam2 = Picamera2()
-        # Configure 640x480 resolution for high FPS and ultra-low video latency
         camera_config = picam2.create_preview_configuration(main={"size": (640, 480)})
         picam2.configure(camera_config)
         picam2.start()
-        print("[INFO] Camera Module 3 initialized successfully.")
+        print("[INFO] Camera Module 3 (IMX708) initialized successfully.")
     except Exception as e:
         print(f"[ERROR] Failed to initialize Camera Module 3: {e}")
         picam2 = None
 
 def generate_camera_frames():
-    """Generates MJPEG stream frames from Camera Module 3."""
+    """Captures camera frames, passes them through YOLO detection, and streams JPEG."""
     while True:
         if picam2:
             try:
-                # Capture JPEG image into memory buffer
-                stream = io.BytesIO()
-                picam2.capture_file(stream, format='jpeg')
-                frame = stream.getvalue()
+                frame_array = picam2.capture_array()
+                frame_bgr = cv2.cvtColor(frame_array, cv2.COLOR_RGB2BGR)
+
+                if yolo_available:
+                    results = yolo_model(frame_bgr, conf=0.45, verbose=False)
+                    for result in results:
+                        for box in result.boxes:
+                            x1, y1, x2, y2 = map(int, box.xyxy[0])
+                            conf = float(box.conf[0])
+                            cls = int(box.cls[0])
+                            label_name = yolo_model.names[cls]
+
+                            cv2.rectangle(frame_bgr, (x1, y1), (x2, y2), (254, 242, 0), 2)
+                            caption = f"{label_name} {conf:.2f}"
+                            t_size = cv2.getTextSize(caption, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+                            cv2.rectangle(frame_bgr, (x1, y1 - t_size[1] - 8), (x1 + t_size[0] + 6, y1), (254, 242, 0), -1)
+                            cv2.putText(frame_bgr, caption, (x1 + 3, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+
+                ret, buffer = cv2.imencode('.jpg', frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+                if not ret:
+                    continue
+                
+                frame_bytes = buffer.tobytes()
                 yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                
+                time.sleep(0.01)
             except Exception as e:
+                print(f"[ERROR] Camera/YOLO frame error: {e}")
                 time.sleep(0.1)
         else:
             time.sleep(0.5)
 
-# --- Routes & WebSocket Event Handlers ---
+# --- Routes & WebSocket Handlers ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/video_feed')
 def video_feed():
-    """Video streaming route for the camera feed."""
     return Response(generate_camera_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
