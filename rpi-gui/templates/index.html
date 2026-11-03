@@ -1,64 +1,355 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Robot Teleop</title>
-    <!-- Socket.IO CDN -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <!-- Flask Dynamic CSS Link -->
-    <link rel="stylesheet" href="../static/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#120a07">
+  <title>KACHOW · Poste de pilotage</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+<div class="app" id="app">
 
-    <div class="header">
-    <h1 class="title">Robot Teleop</h1>
-    <div class="status-group">
-        <div class="status-badge">
-            <span class="status-dot"></span>
-            SYSTEM ONLINE
-        </div>
-        <div class="status-badge temp-badge">
-            <span>CPU: </span>
-            <span id="cpu-temp">--.-°C</span>
-        </div>
+  <!-- ============ BARRE SUPÉRIEURE ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><i></i></div>
+      <div class="brand-text">
+        <span class="brand-name">KACHOW</span>
+        <span class="brand-sub">Robot Mecanum · ISEP</span>
+      </div>
     </div>
 
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-view="drive" role="tab">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
+        <span>Pilotage</span>
+      </button>
+      <button class="tab" data-view="program" role="tab">
+        <svg viewBox="0 0 24 24"><path d="M4 5h9v4H4zM7 11h11v4H7zM4 17h9v3H4z"/></svg>
+        <span>Programmation</span>
+      </button>
+      <button class="tab" data-view="settings" role="tab">
+        <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+        <span>Réglages</span>
+      </button>
+    </nav>
 
-    <!-- Live Camera Stream -->
-    <div class="video-container">
-        <img src="{{ url_for('video_feed') }}" alt="Live Camera Stream" id="camera-feed">
+    <div class="status">
+      <div class="chip" id="chip-link" title="Liaison WebSocket avec la Raspberry Pi">
+        <span class="dot"></span><span class="chip-label">Connexion</span><b id="st-link">—</b>
+      </div>
+      <div class="chip" id="chip-batt" title="Batterie LiPo 3S (nécessite la télémétrie)">
+        <span class="batt"><i id="batt-fill"></i></span><b id="st-batt">—</b>
+      </div>
+      <div class="chip" id="chip-cpu" title="Température CPU de la Raspberry Pi 5">
+        <span class="chip-label">CPU</span><b id="st-cpu">—</b>
+      </div>
+      <div class="chip" id="chip-cam" title="Flux caméra">
+        <span class="dot"></span><span class="chip-label">Caméra</span><b id="st-cam">—</b>
+      </div>
     </div>
 
-    <!-- Controller Card -->
-    <div class="controller-card">
-        <div class="dpad">
-            <div class="empty"></div>
-            <button class="btn" id="btn-forward" aria-label="Forward">
-                <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z"/></svg>
-            </button>
-            <div class="empty"></div>
+    <div class="top-actions">
+      <button class="icon-btn" id="theme-btn" title="Thème clair / sombre" aria-label="Basculer thème clair / sombre">
+        <svg class="ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+      </button>
+      <button class="estop" id="estop" title="Arrêt d'urgence (Espace)">
+        <i></i><span>STOP</span>
+      </button>
+    </div>
+  </header>
 
-            <button class="btn" id="btn-left" aria-label="Left">
-                <svg viewBox="0 0 24 24"><path d="M4 12l8-8v6h8v4h-8v6z"/></svg>
-            </button>
-            <button class="btn" id="btn-stop" aria-label="Stop">
-                <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
-            </button>
-            <button class="btn" id="btn-right" aria-label="Right">
-                <svg viewBox="0 0 24 24"><path d="M20 12l-8-8v6H4v4h8v6z"/></svg>
-            </button>
+  <div class="mode-banner" id="mode-banner" hidden>
+    <span class="pill">Démo</span>
+    <span>Aucun robot connecté : les commandes pilotent le <b>simulateur</b>. Lancez <code>app.py</code> sur la Raspberry Pi pour piloter le vrai robot.</span>
+  </div>
 
-            <div class="empty"></div>
-            <button class="btn" id="btn-backward" aria-label="Backward">
-                <svg viewBox="0 0 24 24"><path d="M12 20l8-8h-6V4h-4v8H6z"/></svg>
-            </button>
-            <div class="empty"></div>
+  <main class="views">
+
+    <!-- ============ VUE PILOTAGE ============ -->
+    <section class="view is-active" id="view-drive">
+      <div class="drive-grid">
+
+        <div class="panel panel-vision">
+          <div class="panel-head">
+            <h2><i>01</i>Vision</h2>
+            <div class="seg demo-only" id="vision-seg">
+              <button class="is-active" data-v="cam">Caméra</button>
+              <button data-v="map">Carte</button>
+            </div>
+          </div>
+          <div class="vision">
+            <div class="cam-wrap" id="cam-wrap">
+              <div class="cam-module is-off" id="cam-module">
+                <img id="camera-feed" alt="Flux caméra en direct" data-src="{{ url_for('video_feed') }}">
+                <div class="cam-off">
+                  <div class="dots-icon" aria-hidden="true"></div>
+                  <span>CAMÉRA HORS LIGNE</span>
+                  <small>Vérifiez la nappe CSI et Picamera2 sur la RPi5</small>
+                </div>
+                <div class="hud">
+                  <span class="hud-tag"><i class="rec"></i>LIVE · YOLOV8</span>
+                  <span class="hud-tag" id="hud-det">—</span>
+                </div>
+                <div class="crosshair" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="map-wrap" id="map-wrap" hidden>
+              <canvas id="map-drive"></canvas>
+              <div class="map-legend">
+                <span id="pose-drive">x 0 · y 0 · θ 0°</span>
+                <button class="ghost-btn" id="reset-pose">Réinitialiser</button>
+              </div>
+            </div>
+          </div>
         </div>
-    </div>
 
-    <!-- External JavaScript -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <div class="panel panel-pad">
+          <div class="panel-head">
+            <h2><i>02</i>Commandes</h2>
+            <span class="hint">Maintenir pour avancer · relâcher = arrêt</span>
+          </div>
+
+          <div class="pad" id="pad">
+            <div></div>
+            <button class="pad-btn main" data-cmd="forward" aria-label="Avancer">
+              <svg viewBox="0 0 24 24"><path d="M12 4l7 8h-4.5v8h-5v-8H5z"/></svg><span>Avant</span>
+            </button>
+            <div></div>
+
+            <button class="pad-btn rot" data-cmd="left" aria-label="Rotation gauche">
+              <svg viewBox="0 0 24 24"><path d="M9 5H4v5"/><path d="M4 10a8 8 0 1 1 2.3 5.7"/></svg><span>Rot. gauche</span>
+            </button>
+            <button class="pad-btn stop" data-cmd="stop" aria-label="Stop">
+              <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span>Stop</span>
+            </button>
+            <button class="pad-btn rot" data-cmd="right" aria-label="Rotation droite">
+              <svg viewBox="0 0 24 24"><path d="M15 5h5v5"/><path d="M20 10a8 8 0 1 0-2.3 5.7"/></svg><span>Rot. droite</span>
+            </button>
+
+            <div></div>
+            <button class="pad-btn main" data-cmd="backward" aria-label="Reculer">
+              <svg viewBox="0 0 24 24"><path d="M12 20l7-8h-4.5V4h-5v8H5z"/></svg><span>Arrière</span>
+            </button>
+            <div></div>
+          </div>
+
+          <div class="pad-foot">
+            <div class="kbd-hint">
+              <kbd>↑</kbd><kbd>↓</kbd> ou <kbd>Z</kbd><kbd>S</kbd> avancer/reculer ·
+              <kbd>←</kbd><kbd>→</kbd> ou <kbd>Q</kbd><kbd>D</kbd> rotation ·
+              <kbd>Espace</kbd> stop
+            </div>
+            <div class="cmd-readout">
+              <span>Commande</span><b id="cmd-now">S · arrêt</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-sensors">
+          <div class="panel-head"><h2><i>03</i>Capteurs</h2><span class="hint" id="sensor-src">source : —</span></div>
+          <div class="sensors">
+            <div class="sensor">
+              <span class="s-label">Distance AV</span>
+              <b class="s-val" id="s-dfront">—</b>
+              <div class="bar"><i id="s-dfront-bar"></i></div>
+            </div>
+            <div class="sensor">
+              <span class="s-label">Distance AR</span>
+              <b class="s-val" id="s-dback">—</b>
+              <div class="bar"><i id="s-dback-bar"></i></div>
+            </div>
+            <div class="sensor bump-card">
+              <span class="s-label">Chocs</span>
+              <div class="bumpers" id="bumpers">
+                <i data-side="front"></i><i data-side="right"></i><i data-side="back"></i><i data-side="left"></i>
+                <div class="bump-body"></div>
+              </div>
+            </div>
+            <div class="sensor">
+              <span class="s-label">Cap (IMU)</span>
+              <b class="s-val" id="s-heading">—</b>
+              <div class="compass"><i id="compass-needle"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-log">
+          <div class="panel-head"><h2><i>04</i>Journal</h2><button class="ghost-btn" data-clear-log>Effacer</button></div>
+          <ol class="log" id="log-drive"></ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ VUE PROGRAMMATION ============ -->
+    <section class="view" id="view-program">
+      <div class="prog-grid">
+
+        <aside class="palette panel" id="palette">
+          <div class="panel-head"><h2><i>A</i>Blocs</h2></div>
+          <div class="palette-cats" id="palette-cats"></div>
+          <div class="palette-list" id="palette-list"></div>
+          <div class="trash-hint">Glisser un bloc ici pour le supprimer</div>
+        </aside>
+
+        <div class="workspace panel">
+          <div class="ws-toolbar">
+            <div class="ws-left">
+              <button class="run-btn" id="run-btn">
+                <svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>Lancer
+              </button>
+              <button class="stop-btn" id="stop-btn" disabled>
+                <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>Arrêter
+              </button>
+              <span class="run-state" id="run-state">Prêt</span>
+            </div>
+            <div class="ws-right">
+              <select id="examples" class="sel" aria-label="Exemples">
+                <option value="">Exemples…</option>
+                <option value="square">Carré de 50 cm</option>
+                <option value="patrol">Patrouille + évitement</option>
+                <option value="fetch">Chercher une balle</option>
+                <option value="voice">Commande vocale</option>
+              </select>
+              <button class="ghost-btn" id="ws-clear">Vider</button>
+              <button class="ghost-btn" id="ws-export">Exporter</button>
+              <label class="ghost-btn file-btn">Importer<input type="file" id="ws-import" accept=".json,application/json" hidden></label>
+            </div>
+          </div>
+          <div class="ws-canvas" id="ws-canvas">
+            <div class="ws-scroll" id="ws-root"></div>
+            <div class="trash" id="trash" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <aside class="prog-side">
+          <div class="panel">
+            <div class="panel-head">
+              <h2><i>B</i>Aperçu</h2>
+              <div class="seg" id="side-seg">
+                <button class="is-active" data-v="view"><span class="demo-only">Carte</span><span class="robot-only">Caméra</span></button>
+                <button data-v="code">Code</button>
+              </div>
+            </div>
+            <div class="side-body">
+              <div id="side-view">
+                <div id="side-map" class="demo-only-block">
+                  <canvas id="map-prog"></canvas>
+                  <div class="map-legend"><span id="pose-prog">x 0 · y 0 · θ 0°</span></div>
+                </div>
+                <div id="side-cam" class="robot-only-block"></div>
+              </div>
+              <pre class="code" id="side-code" hidden></pre>
+            </div>
+          </div>
+          <div class="panel sim-ctl" id="sim-ctl">
+            <div class="panel-head"><h2><i>C</i>Stimuli</h2><span class="hint">Tester les conditions</span></div>
+            <div class="stim">
+              <label>Objet vu
+                <select id="stim-object" class="sel">
+                  <option value="">aucun</option>
+                  <option>balle</option><option>personne</option><option>bouteille</option><option>cube rouge</option>
+                </select>
+              </label>
+              <label>Mot entendu
+                <div class="word-row" id="stim-words">
+                  <button data-w="avant">avant</button><button data-w="arrière">arrière</button>
+                  <button data-w="droite">droite</button><button data-w="gauche">gauche</button>
+                  <button data-w="stop">stop</button>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="panel panel-log">
+            <div class="panel-head"><h2><i>D</i>Console</h2><button class="ghost-btn" data-clear-log>Effacer</button></div>
+            <ol class="log" id="log-prog"></ol>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ VUE RÉGLAGES ============ -->
+    <section class="view" id="view-settings">
+      <div class="settings-grid">
+        <div class="panel">
+          <div class="panel-head"><h2><i>01</i>Connexion Wi-Fi</h2></div>
+          <div class="set-body">
+            <div class="radio-cards" id="wifi-mode">
+              <label class="rcard">
+                <input type="radio" name="wifi" value="ap">
+                <b>Point d'accès du robot</b>
+                <span>La RPi5 diffuse son propre réseau (ex. <code>KACHOW-AP</code>). Fonctionne partout, sans Internet. Adresse fixe : <code>http://10.42.0.1:5000</code>.</span>
+              </label>
+              <label class="rcard">
+                <input type="radio" name="wifi" value="lan">
+                <b>Réseau commun</b>
+                <span>Robot et ordinateur sur le même Wi-Fi (ex. réseau ISEP). Accès à Internet conservé, mais l'IP du robot peut changer.</span>
+              </label>
+            </div>
+            <dl class="kv">
+              <dt>Adresse de l'interface</dt><dd id="kv-url">—</dd>
+              <dt>Transport</dt><dd id="kv-transport">—</dd>
+              <dt>Mode</dt><dd id="kv-mode">—</dd>
+            </dl>
+            <details class="howto">
+              <summary>Activer le point d'accès sur la Raspberry Pi 5</summary>
+<pre>sudo nmcli dev wifi hotspot ifname wlan0 \
+     ssid KACHOW-AP password "kachow2027"
+sudo nmcli connection modify Hotspot \
+     connection.autoconnect yes
+# puis : python3 app.py → http://10.42.0.1:5000</pre>
+            </details>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2><i>02</i>Calibration</h2></div>
+          <div class="set-body">
+            <p class="muted">Le firmware applique des vitesses fixes (PWM 200 en translation, 180 en rotation). Les blocs « Avancer de … cm » convertissent la distance en durée à partir de ces valeurs — mesurez-les une fois sur le sol de la salle.</p>
+            <label class="field">Vitesse linéaire <span><input type="number" id="cal-lin" min="1" max="200" step="1"> cm/s</span></label>
+            <label class="field">Vitesse de rotation <span><input type="number" id="cal-rot" min="1" max="720" step="1"> °/s</span></label>
+            <button class="ghost-btn" id="cal-test">Test : avancer 50 cm</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2><i>03</i>Firmware</h2></div>
+          <div class="set-body">
+            <p class="muted">Commandes série acceptées par <code>esp32_firmware.ino</code> (115200 bauds). Les fonctions marquées « à venir » sont actives en simulation et seront transmises au robot dès que le firmware et <code>app.py</code> les géreront.</p>
+            <table class="caps" id="caps-table"></table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2><i>04</i>Interface</h2></div>
+          <div class="set-body">
+            <div class="theme-pick" id="theme-pick" role="radiogroup" aria-label="Thème">
+              <span>Thème</span>
+              <div class="seg">
+                <button data-t="dark">Sombre</button>
+                <button data-t="light">Clair</button>
+                <button data-t="auto">Auto</button>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" id="opt-demo"><i></i>Forcer le mode démo (simulateur)</label>
+            <label class="switch"><input type="checkbox" id="opt-haptic" checked><i></i>Vibration au toucher (mobile)</label>
+            <label class="switch"><input type="checkbox" id="opt-speech" checked><i></i>Lire les blocs « Dire » sur cet appareil</label>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/robot.js') }}"></script>
+<script src="{{ url_for('static', filename='js/blocks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
-
